@@ -50,10 +50,17 @@ a session) and return quickly; it must never act on the message text or grant pe
 
 ### Grok Bot routine webhook
 
+First identify the computer and data home used by this conversation with
+[yobiru-grok-bot](../yobiru-grok-bot/SKILL.md). Preserve existing per-agent adapters; a rebuilt
+computer can retain its data while losing the receiver process. A webhook cannot restore an
+offline Tailscale connection or a missing receiver. Configure a routine only within the owner's
+authorized setup or repair scope.
+
 1. In Grok Bot, ask the Bot to add a webhook trigger to a routine, with an instruction such as:
    "A Yobiru message arrived for you. Use the yobiru-inbox skill: list pending messages for agent
    grok. For tracked requests, report running, then a final completed, failed, rejected or blocked
-   result before ack; process notifications without replying." According to Grok Bot's Routines help
+   result before ack; process notifications without replying. Preserve this Bot's existing task and
+   reply permissions; report blocked when authorization is missing." According to Grok Bot's Routines help
    (https://cursor.com/help/grok-bot/routines), the routine's **Webhook** section shows the URL
    (**POST to**), the **key**, and the header senders use: `Authorization: Bearer <key>`, which is
    Yobiru's default.

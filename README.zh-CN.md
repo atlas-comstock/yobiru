@@ -26,7 +26,7 @@ Yobiru 为这些 agents 提供了一套轻量、共通的通信方式：
 - **跟踪请求：** 接收回执、进度和最终结果，随时查询期限及超时状态；普通通知无需回复。
 - **交换有用的上下文：** 发送文字、JSON、报告、日志和其他文件。
 - **按你的规则唤醒：** 收件方决定哪些发送方可以唤醒哪个 agent，并设置静默时间和频率限制。
-- **继续使用自己的工具：** 同一个插件包包含六个 skills 和 Python CLI，提供 Codex、Cursor 插件清单，以及 Grok Bot 的安装路径。
+- **继续使用自己的工具：** 同一个插件包包含七个 skills 和 Python CLI，提供 Codex、Cursor 插件清单，以及 Grok Bot 专用的配置与恢复指引。
 - **数据保存在自己的机器上：** Yobiru 不运营消息或附件存储服务；文件通过 Tailscale 从发送方获取。
 
 这是通信层，不是新的聊天应用或自主任务管理器。Agents 可以通过消息与回复围绕共同目标协作，但 Yobiru 不提供共享群聊界面、调度器，也不能证明对方已经完成工作。
@@ -41,7 +41,7 @@ Yobiru 为这些 agents 提供了一套轻量、共通的通信方式：
 | DOTS | 结合你的背景整理发现，形成简报。 | `brief.md`，以及需要编码 agent 回答的问题。 |
 | Codex | 检查代码仓库、研究可行性，并准备改动或技术答复。 | 分析结果、文件，以及发给请求方的回复。 |
 
-这是说明性的工作流。Yobiru 不提供 X 访问权限，不改变平台收费规则，也不补齐平台缺失的能力。**DOTS 是有条件的示例：** 它需要能执行此 CLI 并访问 tailnet 的环境；本仓库不包含已经验证的 DOTS 连接器。Grok Bot 的完整运行集成也仍需在实际账户上测试。
+这是说明性的工作流。Yobiru 不提供 X 访问权限，不改变平台收费规则，也不补齐平台缺失的能力。**DOTS 是有条件的示例：** 它需要能执行此 CLI 并访问 tailnet 的环境；本仓库不包含已经验证的 DOTS 连接器。手动部署的 Grok Bot 0.5.0 runtime 已完成真实的可追踪请求；原生插件市场安装和云电脑重建后的恢复仍需分别验证。
 
 ## 工作原理
 
@@ -85,9 +85,13 @@ codex plugin marketplace add chekusu/yobiru
 codex plugin add yobiru@yobiru
 ```
 
-新开一个会话，然后说：**“在这台机器上配置 Yobiru。”** 安装插件本身不会运行任何东西（没有安装钩子），后续由 `yobiru-setup` skill 引导完成。六个 skills 分别是 `yobiru-setup`、`yobiru-sessions`、`yobiru-send`、`yobiru-inbox`、`yobiru-wake` 和 `yobiru-upgrade`。
+新开一个会话，然后说：**“在这台机器上配置 Yobiru。”** 安装插件本身不会运行任何东西（没有安装钩子），后续由 `yobiru-setup` skill 引导完成。七个 skills 分别是 `yobiru-setup`、`yobiru-grok-bot`、`yobiru-sessions`、`yobiru-send`、`yobiru-inbox`、`yobiru-wake` 和 `yobiru-upgrade`。
 
 这里使用的是仓库插件市场，并不意味着已经进入 Codex 的公共插件目录。
+
+### ChatGPT 桌面版
+
+同一个插件包按 OpenAI 的[仅桌面插件提交方式](https://developers.openai.com/plugins/deploy/desktop-only)准备，因为其 skills 需要执行本地 Python 和 Tailscale 命令。ChatGPT 和 Codex 使用共同的 [OpenAI 提交入口](https://platform.openai.com/plugins)，不需要再维护一套 Yobiru 通信代码。公开审核和可安装范围取决于宿主与账户；本插件没有为 ChatGPT 网页或手机端增加托管连接器。参见[提交记录](docs/MARKETPLACE_SUBMISSION.md)。
 
 ### Cursor 和 Grok Bot
 
@@ -101,9 +105,9 @@ agent --plugin-dir "$PWD/plugins/yobiru"
 
 也可以把 `plugins/yobiru` 放到 `~/.cursor/plugins/local/yobiru`，然后重新加载 Cursor。使用团队市场时，在 **Dashboard → Plugins & MCPs → Add Marketplace → Import from Repo** 中填入 `https://github.com/chekusu/yobiru`，并配置访问范围。参见 [Cursor 插件文档](https://cursor.com/docs/plugins)。
 
-在账户可用的市场提供 Yobiru 后，从 Grok Bot 的 **Plugins** 添加；Cursor 团队管理员控制市场访问范围。参见 [Grok Bot 插件文档](https://cursor.com/help/grok-bot/connect-plugins)。**目前尚未提交公共 Cursor Marketplace 上架申请**，因此在公共市场搜索可能找不到。
+在账户可用的市场提供 Yobiru 后，从 Grok Bot 的 **Connect apps** 添加；Cursor 团队管理员可能控制市场访问范围。参见 [Grok Bot 插件文档](https://cursor.com/help/grok-bot/connect-plugins)。[官方提交页面](https://x.ai/bot/marketplace/submit-a-plugin)同时覆盖 Grok Bot 和 Cursor。提交之后仍需审核，实际进度以[提交记录](docs/MARKETPLACE_SUBMISSION.md)为准。
 
-还需要配置该 Grok Bot 会话实际使用的电脑，包括 Tailscale 和接收进程。数据应放在 `/workspace/.tailmsg` 这样的持久目录中，并在每个命令之前加 `--home /workspace/.tailmsg`。如果宿主只加载 skill 文本、未提供附带的脚本，可以在 `/workspace` 中使用克隆的仓库或解压后的插件包。脚本是否可用、接收进程能否持续运行，以及实际的 Grok Bot 唤醒流程，仍需账户级验证；参见 [平台说明](docs/PLATFORMS.md)。
+可以对 Grok Bot 说：**“使用 yobiru-grok-bot，把当前会话的云电脑连接到我的其他 agents。”** 新安装使用 `/workspace/.tailmsg` 这样的持久目录；已有安装保留原数据目录。该 skill 引导确认当前电脑、校验官方安装包、处理脚本缺失，并检查固定设备名与恢复方式。接收进程正在运行、请求已经完成、原生插件已经安装，是三种不同的验证结果。参见 [Grok Bot 指南](docs/GROK_BOT.md)和[平台说明](docs/PLATFORMS.md)。
 
 ### 不通过插件宿主，直接使用 CLI
 
@@ -286,6 +290,8 @@ sh "$Y" session bind --agent grok --runtime grok --session-id CHAT_ID --display-
 
 ## 隐私与信任边界
 
+存储位置、网络访问和删除方式见[隐私说明](docs/PRIVACY.md)。
+
 - **数据保存在你的机器上。** 收件箱、发件箱记录和暂存附件位于数据目录，优先级为 `--home DIR`、`$TAILMSG_HOME`、`~/.tailmsg`。Yobiru 没有集中存储服务；你选择的 agent 平台仍可能处理交给其 agents 的内容。
 - **Tailscale 是网络边界。** 接收端检查 Tailscale 身份和本地访问策略（新安装默认 `tailnet`，可选 `allowlist`，拒绝规则优先）。Tailscale ACL／grants 仍然生效。传输加密由 Tailscale 提供，Yobiru 不额外提供静态存储加密。需要保护主机及其文件系统。
 - **Agent 名称用于路由，不代表隔离。** `from_agent` 由发送方填写。共享机器或数据目录的多个 agents 不是独立的安全主体；需要隔离时，应使用不同机器或适当的宿主隔离机制。
@@ -304,7 +310,7 @@ codex plugin marketplace upgrade yobiru
 codex plugin add yobiru@yobiru
 ```
 
-更新后新开一个会话。Cursor 通过 **Customize** 更新，或替换本地插件副本；Grok Bot 通过 **Plugins** 管理。
+更新后新开一个会话。Cursor 通过 **Customize** 更新，或替换本地插件副本；Grok Bot 通过 **Connect apps** 管理。
 
 插件更新**不会**更新常驻接收端：运行 `install-runtime --upgrade`（再加 `--apply`）并重启接收服务；已安装桥接时用同一个会话 UUID 重新运行 `codex-bridge install`（名称、回复设置和自定义入口指令都会保留）。然后协调其他机器：
 
@@ -352,11 +358,11 @@ python3 tools/build_plugin.py release
 | 范围 | 当前验证边界 |
 |---|---|
 | 打包与 CLI | 自动检查覆盖解压后运行、含空格的路径、配置保留，以及使用隔离测试环境的消息／文件／回复／唤醒流程。 |
-| Tailscale 传输 | 在 0.1.0 上（0.2.x 未重跑，核心未改动），上游 `selftest.sh` 在一台 Linux 机器的真实 Tailscale 地址上使用临时接收进程，通过了 59 项检查；这不是双机测试。 |
-| Codex | 在 0.1.0 上（0.2.x 与 0.3.0 未重复）已验证 Linux CLI 安装、插件启用状态、四个 skills 的发现，以及从插件缓存执行命令。0.2.x 中 Linux 与 macOS 桥接仅由使用假 CLI、假 `systemctl` 和临时 socket 的离线及解包测试覆盖；未声称已在真实 app-server 上运行。 |
-| Cursor / Grok Bot / DOTS | Cursor／Grok 安装路径依据宿主文档；实机验收与跨平台端到端协作仍未验证。未提供 DOTS 连接器。 |
+| Tailscale 传输 | 历史 0.4.0 单机实网自测通过 59 项；0.5.0 的独立实机验收包含跨机器 Grok Bot 请求。具体时间与范围见验证记录。 |
+| Codex | 历史仓库安装与 skill 发现已验证。2026-10-13，实际运行的 0.5.0 Linux bridge 在原常驻 session 中完成自动请求回复；这不代表所有桌面环境或官方目录安装路径都已验证。 |
+| Cursor / Grok Bot / DOTS | 手动部署的 Grok Bot 0.5.0 runtime 已完成真实跨机器可追踪请求和认证状态查询。原生 Grok／Cursor 市场安装及重建恢复仍需单独验收。未提供 DOTS 连接器。 |
 | 0.3.0 引导、发现与更新 | 离线测试：各平台引导（未安装、未登录、守护进程、权限、无 TUN），带认证的 `/info` 与不含机密的投影，原生名称／确认标题／别名与 UUID，旧版 404／403／不可达／格式错误／慢速对端，release 解析与渠道，通知去重、重试和 uncertain 处理，桥接升级保留名称。未连接真实 Tailscale、GitHub 或对端。 |
-| 公共市场上架 | 尚未提交或获批；仓库安装与公共上架是两回事。 |
+| 公共市场上架 | 见[提交记录](docs/MARKETPLACE_SUBMISSION.md)。仓库安装、提交、审核与正式上架是不同阶段。 |
 
 `sh selftest.sh` 需要 Tailscale 和可用的临时端口 `7866–7883`，不会使用生产端口 `7766` 或默认数据目录。其他待验收项目见 [平台说明与来源](docs/PLATFORMS.md)。
 

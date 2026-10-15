@@ -2,12 +2,21 @@
   "id": "yobiru",
   "displayName": "Yobiru",
   "nativeName": "ヨビル",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "publisher": "Chekusu",
   "repository": "https://github.com/chekusu/yobiru",
   "license": "MIT",
   "description": "Peer-to-peer messages, file handoff and receiver-controlled wake-ups between AI agents on your own Tailscale network. Speaks the tailmsg protocol v1; no central server.",
-  "keywords": ["tailscale", "tailnet", "agents", "messaging", "peer-to-peer", "file-transfer", "wake", "tailmsg"],
+  "keywords": [
+    "tailscale",
+    "tailnet",
+    "agents",
+    "messaging",
+    "peer-to-peer",
+    "file-transfer",
+    "wake",
+    "tailmsg"
+  ],
   "pluginDir": "plugins/yobiru",
   "skillPrefix": "yobiru-",
   "marketplace": {
@@ -16,10 +25,14 @@
     "description": "Yobiru agent messaging plugin (tailmsg protocol v1) for Codex, Cursor and Grok Bot."
   },
   "codex": {
-    "shortDescription": "Message agents on your other machines over Tailscale",
-    "longDescription": "Yobiru lets this agent send messages, structured data and files to agents on other machines in your Tailscale network, read and process its own inbox, and configure who may wake it. Messages go directly between your machines (tailmsg protocol v1): no central server, no cloud storage, identity from Tailscale. Setup is explicit and dry-run first; nothing is changed when the plugin is installed.",
+    "shortDescription": "Connect your personal agents",
+    "longDescription": "Yobiru lets your personal agents exchange messages, structured data and files between your own computers over Tailscale. Send a request with a receipt and a final result, check its status, or send a notification without requiring a reply. Use your existing Codex session or a receiver-controlled wake adapter. This plugin runs local commands: it requires Python 3.8+, Tailscale and an approved setup on each participating computer. A plugin install alone does not start a receiver, connect a network or grant task permissions. Yobiru has no central message or file storage.",
     "category": "Productivity",
-    "capabilities": ["Interactive", "Read", "Write"],
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
     "defaultPrompt": [
       "Set up Yobiru on this machine",
       "Which of my agents are online, and which session handles their messages?",
@@ -30,13 +43,17 @@
     "logo": "./assets/icon.png",
     "marketplaceCategory": "Productivity",
     "installation": "AVAILABLE",
-    "authentication": "ON_INSTALL"
+    "authentication": "ON_INSTALL",
+    "websiteURL": "https://yobiru.com",
+    "privacyPolicyURL": "https://github.com/chekusu/yobiru/blob/main/docs/PRIVACY.md"
   },
   "cursor": {
     "logo": "assets/icon.png"
   },
   "bundle": {
-    "core": {"tailmsg.py": "scripts/tailmsg.py"},
+    "core": {
+      "tailmsg.py": "scripts/tailmsg.py"
+    },
     "codexBridge": {
       "codex_bridge.py": "scripts/codex_bridge/codex_bridge.py",
       "codex_queue_client.py": "scripts/codex_bridge/codex_queue_client.py",
@@ -46,6 +63,26 @@
       "CODEX_DISPATCHER.md": "scripts/codex_bridge/CODEX_DISPATCHER.md",
       "docs/CODEX_SANDBOX.md": "scripts/codex_bridge/CODEX_SANDBOX.md"
     },
-    "license": {"LICENSE": "LICENSE"}
+    "license": {
+      "LICENSE": "LICENSE"
+    }
+  },
+  "homepage": "https://yobiru.com",
+  "openai": {
+    "requires_local_executor": true,
+    "onboardingSkill": "./skills/yobiru-setup/SKILL.md",
+    "supportURL": "https://github.com/chekusu/yobiru/issues",
+    "publication": {
+      "translations": {
+        "zh-CN": {
+          "subtitle": "连接你的个人 agents",
+          "description": "Yobiru 通过 Tailscale，让不同电脑上的个人 agent 交换消息、结构化数据和文件。请求包含回执和最终结果，并可查询状态；通知无需回复。可以沿用 Codex 常驻会话，或由接收端配置唤醒入口。插件执行本地命令，每台参与通信的电脑需要 Python 3.8+、Tailscale 和经用户授权的配置。仅安装插件不会启动接收服务、连接网络或授予任务权限。Yobiru 不集中存储消息或文件。"
+        },
+        "ja-JP": {
+          "subtitle": "パーソナルエージェントをつなぐ",
+          "description": "Yobiru は Tailscale を通じて、別々のコンピューター上のパーソナルエージェント間でメッセージ、構造化データ、ファイルを受け渡します。リクエストには受信確認と最終結果があり、状態を確認できます。通知への返信は不要です。既存の Codex セッションや、受信側で設定した起動アダプターを利用できます。このプラグインはローカルコマンドを実行します。通信する各コンピューターに Python 3.8 以降、Tailscale、ユーザーが承認した設定が必要です。インストールだけでは受信サービスの起動、ネットワークへの接続、タスク権限の付与は行いません。Yobiru はメッセージやファイルを中央に保存しません。"
+        }
+      }
+    }
   }
 }

@@ -21,6 +21,7 @@ import stat
 import sys
 import zipfile
 from pathlib import Path, PurePosixPath
+from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parent.parent
 PRODUCT_FILE = ROOT / "packaging" / "product.json"
@@ -63,6 +64,8 @@ CODEX_INTERFACE_KEYS = {"displayName", "shortDescription", "longDescription", "d
                         "composerIcon", "logo", "logoDark", "screenshots", "defaultPrompt", "default_prompt"}
 AGENT_PLUGIN_KEYS = {"$schema", "name", "version", "description", "author", "homepage", "repository", "license",
                      "keywords", "extensions"}
+OPENAI_KEYS = {"interface", "requires_local_executor", "onboardingSkill", "publication"}
+OPENAI_INTERFACE_KEYS = CODEX_INTERFACE_KEYS | {"supportURL"}
 CURSOR_KEYS = {"name", "description", "version", "author", "homepage", "repository", "license", "keywords", "logo",
                "rules", "agents", "skills", "commands", "hooks", "mcpServers", "variables"}
 
@@ -107,9 +110,23 @@ def render(p):
                            "category": c["category"], "capabilities": c["capabilities"],
                            "defaultPrompt": c["defaultPrompt"], "brandColor": c["brandColor"],
                            "composerIcon": c["composerIcon"], "logo": c["logo"]}}
+    for key in ("websiteURL", "privacyPolicyURL"):
+        codex["interface"][key] = c[key]
+    # The portable OpenAI extension replaces (rather than merges with) the legacy
+    # overlay. Keep the complete interface in both; only the extension uses new
+    # directory fields so old Codex manifest validators remain compatible.
+    oa = p["openai"]
+    portable["extensions"] = {"com.openai": {
+        "interface": dict(codex["interface"], supportURL=oa["supportURL"]),
+        "requires_local_executor": oa["requires_local_executor"],
+        "onboardingSkill": oa["onboardingSkill"],
+        "publication": oa["publication"],
+    }}
     cursor = {"name": pid, "version": p["version"], "description": p["description"], "author": author,
               "repository": p["repository"], "license": p["license"], "keywords": p["keywords"],
               "logo": p["cursor"]["logo"]}
+    for manifest in (portable, codex, cursor):
+        manifest["homepage"] = p["homepage"]
     m = p["marketplace"]
     codex_market = {"name": m["name"], "interface": {"displayName": m["displayName"]},
                     "plugins": [{"name": pid, "source": {"source": "local", "path": "./" + p["pluginDir"]},
@@ -205,6 +222,83 @@ def rel_inside(base, rel):
     return target == base.resolve() or str(target).startswith(str(base.resolve()) + os.sep)
 
 
+def public_https_url(value):
+    """A credential-free HTTPS listing URL; availability is checked before submission."""
+    if (not isinstance(value, str) or not value or len(value) > 1024 or
+            any(c.isspace() or ord(c) < 32 or 127 <= ord(c) <= 159 for c in value)):
+        return False
+    try:
+        parsed = urlsplit(value)
+        return (parsed.scheme == "https" and bool(parsed.hostname) and
+                parsed.username is None and parsed.password is None)
+    except ValueError:
+        return False
+
+
+def validate_openai(manifest, legacy_ui, base):
+    """Validate this skills-only submission's documented OpenAI fields.
+
+    https://developers.openai.com/plugins/deploy/submission
+    https://developers.openai.com/plugins/deploy/desktop-only
+    This is intentionally a check of the shape Yobiru ships, not a general
+    replacement for the portal's eligibility, policy and skill scans.
+    """
+    errs = []
+    extensions = manifest.get("extensions")
+    if not isinstance(extensions, dict) or set(extensions) != {"com.openai"}:
+        return ["plugin.json: extensions must contain the complete com.openai settings"]
+    oa = extensions["com.openai"]
+    if not isinstance(oa, dict) or set(oa) - OPENAI_KEYS:
+        return ["plugin.json: unsupported com.openai settings"]
+    if oa.get("requires_local_executor") is not True:
+        errs.append("plugin.json: com.openai.requires_local_executor must be true for local Tailscale commands")
+    ui = oa.get("interface")
+    if not isinstance(ui, dict):
+        errs.append("plugin.json: com.openai.interface must contain the full listing; the overlay is not merged")
+        ui = {}
+    if set(ui) - OPENAI_INTERFACE_KEYS:
+        errs.append("plugin.json: unsupported com.openai.interface fields")
+    for key, value in legacy_ui.items():
+        if key not in ui or ui[key] != value:
+            errs.append("plugin.json: com.openai.interface.%s must match the compatibility manifest" % key)
+    for key, limit in (("displayName", 30), ("shortDescription", 30),
+                       ("longDescription", 4000), ("developerName", 80)):
+        value = ui.get(key)
+        if not isinstance(value, str) or not value.strip() or len(value) > limit:
+            errs.append("plugin.json: com.openai.interface.%s must be 1-%d characters" % (key, limit))
+    for key in ("websiteURL", "supportURL", "privacyPolicyURL"):
+        if not public_https_url(ui.get(key)):
+            errs.append("plugin.json: com.openai.interface.%s must be a credential-free HTTPS URL" % key)
+    if "screenshots" in ui:
+        errs.append("plugin.json: skills-only directory submissions cannot include screenshots")
+    onboarding = oa.get("onboardingSkill")
+    if (not isinstance(onboarding, str) or not onboarding.startswith("./skills/") or
+            not onboarding.endswith("/SKILL.md") or not rel_inside(base, onboarding) or
+            not (base / onboarding).is_file()):
+        errs.append("plugin.json: com.openai.onboardingSkill must name an included skill")
+    publication = oa.get("publication")
+    if not isinstance(publication, dict) or set(publication) - {"translations"}:
+        errs.append("plugin.json: unsupported com.openai.publication settings")
+        return errs
+    translations = publication.get("translations")
+    if not isinstance(translations, dict) or not translations:
+        errs.append("plugin.json: publication.translations must be a nonempty locale map")
+        return errs
+    for locale, fields in translations.items():
+        if not isinstance(locale, str) or not re.match(r"^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*\Z", locale):
+            errs.append("plugin.json: invalid publication translation locale")
+        if not isinstance(fields, dict) or not fields or set(fields) - {"subtitle", "description"}:
+            errs.append("plugin.json: translation fields must be subtitle and/or description")
+            continue
+        for key, value in fields.items():
+            limit = 30 if key == "subtitle" else 4000
+            if (not isinstance(value, str) or not value.strip() or len(value) > limit or
+                    any((ord(c) < 32 or 127 <= ord(c) <= 159) and
+                        not (key == "description" and c == "\n") for c in value)):
+                errs.append("plugin.json: translated %s must contain supported text within %d characters" % (key, limit))
+    return errs
+
+
 def validate(p, root=ROOT):
     errs = []
     base = root / p["pluginDir"]
@@ -236,8 +330,6 @@ def validate(p, root=ROOT):
         errs.append("plugin.json: author must be {name, email, url} strings")
     if "keywords" in m and not (isinstance(m["keywords"], list) and all(isinstance(k, str) for k in m["keywords"])):
         errs.append("plugin.json: keywords must be strings")
-    if "extensions" in m:
-        errs.append("plugin.json: extensions would replace the .codex-plugin overlay; keep it out")
     # Codex compatibility manifest (rules of the plugin-creator validator)
     c = load(p["pluginDir"] + "/.codex-plugin/plugin.json")
     if set(c) - CODEX_KEYS:
@@ -267,6 +359,7 @@ def validate(p, root=ROOT):
         rel = str(ui.get(k, ""))
         if not rel.startswith("./") or not rel_inside(base, rel[2:]) or not (base / rel[2:]).is_file():
             errs.append(".codex-plugin: interface.%s must name a file inside the plugin" % k)
+    errs.extend(validate_openai(m, ui, base))
     # Cursor native manifest
     cu = load(p["pluginDir"] + "/.cursor-plugin/plugin.json")
     if set(cu) - CURSOR_KEYS:
@@ -283,9 +376,11 @@ def validate(p, root=ROOT):
     if (base / "mcp.json").exists() or (base / ".mcp.json").exists() or (base / "hooks").exists():
         errs.append("plugin: no MCP config or hooks are shipped in this release")
     for man, label in ((m, "plugin.json"), (cu, ".cursor-plugin")):
-        for k in ("version", "description", "repository", "license", "keywords"):
+        for k in ("version", "description", "homepage", "repository", "license", "keywords"):
             if man.get(k) != c.get(k):
                 errs.append("%s: %s differs from .codex-plugin" % (label, k))
+    if not public_https_url(m.get("homepage")):
+        errs.append("plugin.json: homepage must be a credential-free HTTPS URL")
     # catalogs
     cm = load(".agents/plugins/marketplace.json")
     if not MARKETPLACE_RE.match(str(cm.get("name"))):

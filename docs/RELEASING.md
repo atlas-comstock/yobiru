@@ -12,6 +12,9 @@ Everything is plain Python 3.8+ with the standard library; no network access is 
   `plugins/yobiru/.cursor-plugin/plugin.json`, `.agents/plugins/marketplace.json`,
   `.cursor-plugin/marketplace.json`, the bundled copies, `plugins/yobiru/LICENSE` and `SOURCES.json`.
 - Hand-written: `scripts/yobiru`, `scripts/yobiru.py`, `skills/*/SKILL.md` and `README.md`.
+- Host-specific behavior stays in the shared skills: `yobiru-grok-bot` handles the conversation's
+  computer and rebuild recovery, while setup, sending and wake configuration use the existing
+  skills and runtime. Do not fork the protocol for a marketplace or invent an undocumented manifest.
 - `plugins/yobiru/assets/icon.png` is the approved Image Generation master, shared byte-for-byte
   with the mark on [yobiru.com](https://yobiru.com). Both plugin manifests and all READMEs use this
   same asset. Preserve its three petals and the two black eyes at the rounded lower end of the
@@ -31,8 +34,10 @@ python3 tools/build_plugin.py release   # check, then dist/ archives and SHA256S
 
 - a generated file or bundled copy differs from what `sync` would write, or an executable bit is wrong;
 - `plugin.json` leaves the closed Agent Plugins 1.0.0 schema
-  (<https://agent-plugins.org/schemas/1.0.0/plugin.schema.json>) or adds `extensions` (that would
-  replace the `.codex-plugin` overlay, see <https://developers.openai.com/plugins/build/plugins>);
+  (<https://agent-plugins.org/schemas/1.0.0/plugin.schema.json>) or its generated OpenAI extension
+  loses required fields. The complete `extensions.com.openai` block replaces the legacy overlay,
+  so interface metadata must stay consistent in both; see
+  <https://developers.openai.com/plugins/build/plugins>;
 - `.codex-plugin/plugin.json` breaks the rules of the Codex plugin-creator validator (fields, semver,
   interface fields, asset paths inside the plugin);
 - `.cursor-plugin/plugin.json` or either marketplace file breaks the documented Cursor rules
@@ -89,6 +94,20 @@ protocol v1 release from before @agent addressing. Its runtime files go to `test
 Change `version` in `packaging/product.json` and `PRODUCT_VERSION` in the canonical `tailmsg.py`,
 run `sync`, `check`, the relevant tests and `release`, then commit
 the regenerated files. Codex reinstalls a local plugin when its version changes.
+
+## Marketplace submissions
+
+Use [MARKETPLACE_SUBMISSION.md](MARKETPLACE_SUBMISSION.md) for current official portals, required
+listing fields and the actual submission state. The Grok Bot/Cursor form accepts the public
+repository. OpenAI's skills-only desktop route uses the same package with
+`requires_local_executor: true`; it does not require inventing a hosted MCP service.
+
+Before submission, verify the exact package, its [privacy notice](PRIVACY.md), reference files and
+the intended host's native installation and skill invocation. Generic CLI tests or an existing
+receiver are not substitutes for a required in-app plugin test. Keep test evidence sanitized:
+no home addresses, tailnet domains, session IDs, account details or webhook secrets. Submit only
+statements supported by completed tests. Store a receipt or status returned by the official portal;
+mark public availability only after a listing or publication is actually confirmed.
 
 ## Renaming
 

@@ -43,9 +43,15 @@ class RepositoryTests(unittest.TestCase):
                      ("plugin.json", ".codex-plugin/plugin.json", ".cursor-plugin/plugin.json")]
         self.assertEqual({P["id"]}, {m["name"] for m in manifests})
         self.assertEqual({P["version"]}, {m["version"] for m in manifests})
-        self.assertNotIn("extensions", manifests[0])          # keeps the .codex-plugin overlay in effect
         self.assertEqual({P["repository"]}, {m["repository"] for m in manifests})
-        self.assertNotIn("homepage", manifests[0])            # no website beyond the repository
+        self.assertEqual({P["homepage"]}, {m["homepage"] for m in manifests})
+        oa = manifests[0]["extensions"]["com.openai"]
+        self.assertIs(True, oa["requires_local_executor"])
+        self.assertEqual(manifests[1]["interface"],
+                         {k: v for k, v in oa["interface"].items() if k != "supportURL"})
+        self.assertEqual(P["openai"]["supportURL"], oa["interface"]["supportURL"])
+        self.assertNotIn("requires_local_executor", manifests[1])  # keep older Codex validators usable
+        self.assertNotIn("extensions", manifests[1])
         codex_market = json.loads((REPO / ".agents/plugins/marketplace.json").read_text())
         cursor_market = json.loads((REPO / ".cursor-plugin/marketplace.json").read_text())
         self.assertEqual("./" + P["pluginDir"], codex_market["plugins"][0]["source"]["path"])
@@ -63,8 +69,8 @@ class RepositoryTests(unittest.TestCase):
 
     def test_skills_are_discoverable_and_locate_the_bundled_command(self):
         skills = sorted((REPO / P["pluginDir"] / "skills").iterdir())
-        self.assertEqual(["yobiru-inbox", "yobiru-send", "yobiru-sessions", "yobiru-setup", "yobiru-upgrade",
-                          "yobiru-wake"], [s.name for s in skills])
+        self.assertTrue({"yobiru-grok-bot", "yobiru-inbox", "yobiru-send", "yobiru-sessions", "yobiru-setup", "yobiru-upgrade",
+                         "yobiru-wake"}.issubset({s.name for s in skills}))
         for s in skills:
             text = (s / "SKILL.md").read_text()
             self.assertTrue(text.startswith("---\nname: %s\n" % s.name))
@@ -104,6 +110,23 @@ class ArchiveTests(unittest.TestCase):
             self.assertFalse(set(parts) & {"__pycache__", "inbox", "outbox", "test-run", ".live-test", "dist"}, name)
             self.assertFalse(name.endswith((".pyc", ".sqlite3", ".log", ".bak", "config.json")), name)
 
+    def test_plugin_archive_is_a_single_openai_submission_root(self):
+        # The official portal accepts one root OR one top-level plugin directory.
+        # Submit the plugin ZIP, not the repository/marketplace ZIP.
+        with zipfile.ZipFile(io.BytesIO(self.plugin_zip)) as archive:
+            infos = archive.infolist()
+            self.assertEqual({P["id"]}, {i.filename.split("/", 1)[0] for i in infos})
+            self.assertIn(P["id"] + "/plugin.json", archive.namelist())
+            self.assertLessEqual(len(infos), 5000)
+            self.assertLessEqual(len(self.plugin_zip), 100 * 1024 * 1024)
+            self.assertLessEqual(sum(i.file_size for i in infos), 512 * 1024 * 1024)
+            for info in infos:
+                self.assertLessEqual(len(info.filename.split("/")), 20)
+            portable = json.loads(archive.read(P["id"] + "/plugin.json"))
+            oa = portable["extensions"]["com.openai"]
+            self.assertIn(P["id"] + "/" + oa["onboardingSkill"][2:], archive.namelist())
+            self.assertNotIn("screenshots", oa["interface"])
+
     def test_modes_and_timestamps_are_fixed(self):
         for info in zipfile.ZipFile(io.BytesIO(self.plugin_zip)).infolist():
             self.assertEqual((1980, 1, 1, 0, 0, 0), info.date_time)
@@ -131,6 +154,57 @@ class FixtureTests(unittest.TestCase):
     def test_fixture_copy_is_clean(self):
         self.assertEqual([], B.validate(P, self.root))
         self.assertEqual([], B.drift(P, self.root))
+
+    def mutate_portable(self, mutate):
+        path = self.base / "plugin.json"
+        manifest = json.loads(path.read_text())
+        mutate(manifest)
+        path.write_text(json.dumps(manifest))
+        return "\n".join(B.validate(P, self.root))
+
+    def test_openai_extension_cannot_silently_drop_legacy_listing(self):
+        errors = self.mutate_portable(lambda m: m["extensions"]["com.openai"].update(
+            interface={"shortDescription": "A partial listing"}))
+        self.assertIn("must match the compatibility manifest", errors)
+        self.assertIn("privacyPolicyURL", errors)
+
+    def test_local_execution_declaration_is_required(self):
+        for bad in (False, None, "true", 1):
+            with self.subTest(value=bad):
+                errors = self.mutate_portable(lambda m: m["extensions"]["com.openai"].update(
+                    requires_local_executor=bad))
+                self.assertIn("requires_local_executor must be true", errors)
+
+    def test_directory_subtitle_limit_is_enforced(self):
+        errors = self.mutate_portable(lambda m: m["extensions"]["com.openai"]["interface"].update(
+            shortDescription="x" * 31))
+        self.assertIn("shortDescription must be 1-30 characters", errors)
+
+    def test_missing_or_escaping_onboarding_skill_is_rejected(self):
+        for bad in ("./skills/missing/SKILL.md", "./skills/../../../outside/SKILL.md", "/SKILL.md", None):
+            with self.subTest(value=bad):
+                errors = self.mutate_portable(lambda m: m["extensions"]["com.openai"].update(onboardingSkill=bad))
+                self.assertIn("onboardingSkill must name an included skill", errors)
+
+    def test_listing_urls_cannot_embed_credentials(self):
+        for key in ("websiteURL", "supportURL", "privacyPolicyURL"):
+            with self.subTest(field=key):
+                errors = self.mutate_portable(lambda m: m["extensions"]["com.openai"]["interface"].update(
+                    {key: "https://secret@example.com/policy"}))
+                self.assertIn(key + " must be a credential-free HTTPS URL", errors)
+
+    def test_translation_limits_and_unknown_submission_fields_are_rejected(self):
+        errors = self.mutate_portable(lambda m: m["extensions"]["com.openai"]["publication"].update(
+            translations={"ja-JP": {"subtitle": "x" * 31}, "zh-CN": {"description": "text\ttext"}}))
+        self.assertIn("translated subtitle", errors)
+        self.assertIn("translated description", errors)
+        errors = self.mutate_portable(lambda m: m["extensions"]["com.openai"].update(test_credentials="never ship"))
+        self.assertIn("unsupported com.openai settings", errors)
+
+    def test_skills_only_submission_rejects_screenshot_metadata(self):
+        errors = self.mutate_portable(lambda m: m["extensions"]["com.openai"]["interface"].update(
+            screenshots=["./assets/icon.png"]))
+        self.assertIn("skills-only directory submissions cannot include screenshots", errors)
 
     def test_symlinked_skills_directory_is_rejected_not_dropped(self):
         outside = Path(self.tmp.name) / "outside-skills"

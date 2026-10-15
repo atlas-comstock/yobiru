@@ -1,7 +1,48 @@
 # What has been verified
 
-Yobiru 0.5.0. This page separates what has actually been run from what has not. It is not a
+Yobiru 0.5.1 submission preparation. This page separates what has actually been run from what has not. It is not a
 security guarantee: the tests show the behaviors listed below, nothing more.
+
+## Host packaging and marketplace verification (0.5.1)
+
+The package adds the Grok Bot setup/recovery skill and declares the local execution needed by
+OpenAI desktop hosts. Submission portals and test requirements were rechecked on 2026-10-15;
+see [MARKETPLACE_SUBMISSION.md](MARKETPLACE_SUBMISSION.md). The package remains one implementation.
+The dated test totals below describe earlier releases and must not be relabeled as a 0.5.1 run.
+
+The 0.5.1 release tree passed **228 plugin tests** on Python 3.12, including the eight
+new metadata/archive checks, packaged CLI execution and isolated loopback workflows.
+The build consistency check and installed Codex compatibility-manifest validator passed.
+The runtime change is its reported product version; the bridge implementation is unchanged.
+These tests do not establish native Grok or ChatGPT desktop plugin installation.
+
+Native Grok/Cursor plugin discovery, bundle script availability and in-app invocation need distinct
+evidence from the manual runtime test below. The [Grok Bot guide](GROK_BOT.md) gives the test steps.
+A submission receipt is not review approval; a prepared archive is not a submission. Public listing
+and clean ChatGPT desktop installation are not established merely by valid metadata.
+
+On 2026-10-15, the actual Grok Bot returned a new authenticated tracked result with the requested
+challenge and `19 + 23 = 42`, and reported its installed CLI as 0.5.0. Its conversation's plugin
+catalog did not expose Yobiru; release skill files existed on the computer but were not injected as
+native skills. No supported install/import route was established through that conversation's tools.
+This reconfirms manual runtime execution, while native in-app plugin testing remains **unverified**.
+Do not use this observation to satisfy a declaration that native plugin installation was tested.
+
+## Historical live acceptance after the 0.5.0 release
+
+On 2026-10-13, after the isolated release suites completed:
+
+- The actual Linux receiver and existing Codex bridge were upgraded to 0.5.0. With the owner's
+  authorization, automatic replies were enabled while preserving the fixed session and other
+  configuration. A real model turn reported progress and a verified final result for a harmless
+  test request. Incoming and outgoing ledgers agreed, followed by local acknowledgement.
+- A manually deployed Grok Bot receiver advertised 0.5.0 and `request-lifecycle-v1`. A real request
+  from another machine progressed from received to running to completed, returning the requested
+  harmless challenge and arithmetic result. An authenticated remote status refresh also succeeded.
+
+These observations establish those particular runtime paths, not native Grok marketplace plugin
+installation, every operating system, future availability or automatic recovery after a VM rebuild.
+Private operational records are intentionally not included in this public repository.
 
 ## Tracked requests, receipts and final results (0.5.0)
 
@@ -39,11 +80,11 @@ Python 3.8 syntax parsing passed; this is not a test run on a Python 3.8 interpr
   prompt assertion establishes the instructions sent to the model, not proof that every agent
   follows them or that a real model task completed.
 
-**Verification boundary:** these new request tests use isolated temporary data homes, simulated
-Tailscale identities and local HTTP processes. They do not prove delivery over a real tailnet,
-Grok Bot routine execution, native macOS/launchd or Windows behavior, or an upgrade of any production
-runtime. No production upgrade or cross-machine acceptance is claimed for 0.5.0 here. Existing
-resident tests use a fake WebSocket server; historical live probes below are not a new 0.5.0 run.
+**Verification boundary:** these request tests use isolated temporary data homes, simulated
+Tailscale identities and local HTTP processes. The suites alone do not prove real tailnet delivery,
+Grok Bot routine execution, native macOS/launchd or Windows behavior, or a production upgrade.
+The separate dated live acceptance above supplies limited runtime evidence. Existing resident
+tests use a fake WebSocket server; other historical live probes below retain their original dates.
 A timeout means the actual task result remains unknown; it is not cancellation or a safe-retry
 signal. Durable response retries do not establish exactly-once task execution, guaranteed offline
 completion, or new authority to execute a received request.
@@ -133,8 +174,8 @@ no operating-system timer was installed and no real peer was upgraded in this ve
 
 ## Current automated check commands
 
-The commands below refer to the current 0.5.0 tree. Test totals include the lifecycle additions
-above; older version numbers in individual behavior descriptions identify when coverage was added.
+The commands below apply to the current tree. Test totals identify their recorded 0.5.0 run;
+older version numbers in individual behavior descriptions identify when coverage was added.
 The real-Tailscale self-test result remains historical and was not rerun for 0.5.0.
 
 | Check | How to run | What it shows |
@@ -160,7 +201,8 @@ offline and extracted-package tests above.
 | A real conversation using the skills | Not tested | Not tested | Not tested | Not tested |
 | Marketplace listing or review | Not submitted | Not submitted | Not submitted | — |
 
-The following acceptance areas were not exercised for the 0.5.0 release tests above:
+The following acceptance areas were not exercised by the isolated 0.5.0 release suites above.
+The later live acceptance section records the limited Linux/Grok runtime checks separately:
 
 - Two real machines exchanging messages, files and wake-ups over one tailnet.
 - macOS and Windows runs of the `yobiru` command, and installing the printed service definitions.

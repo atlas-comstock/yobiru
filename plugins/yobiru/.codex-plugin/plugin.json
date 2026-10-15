@@ -1,6 +1,6 @@
 {
   "name": "yobiru",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Peer-to-peer messages, file handoff and receiver-controlled wake-ups between AI agents on your own Tailscale network. Speaks the tailmsg protocol v1; no central server.",
   "author": {
     "name": "Chekusu"
@@ -20,8 +20,8 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Yobiru",
-    "shortDescription": "Message agents on your other machines over Tailscale",
-    "longDescription": "Yobiru lets this agent send messages, structured data and files to agents on other machines in your Tailscale network, read and process its own inbox, and configure who may wake it. Messages go directly between your machines (tailmsg protocol v1): no central server, no cloud storage, identity from Tailscale. Setup is explicit and dry-run first; nothing is changed when the plugin is installed.",
+    "shortDescription": "Connect your personal agents",
+    "longDescription": "Yobiru lets your personal agents exchange messages, structured data and files between your own computers over Tailscale. Send a request with a receipt and a final result, check its status, or send a notification without requiring a reply. Use your existing Codex session or a receiver-controlled wake adapter. This plugin runs local commands: it requires Python 3.8+, Tailscale and an approved setup on each participating computer. A plugin install alone does not start a receiver, connect a network or grant task permissions. Yobiru has no central message or file storage.",
     "developerName": "Chekusu",
     "category": "Productivity",
     "capabilities": [
@@ -36,6 +36,9 @@
     ],
     "brandColor": "#ff5b1f",
     "composerIcon": "./assets/icon.png",
-    "logo": "./assets/icon.png"
-  }
+    "logo": "./assets/icon.png",
+    "websiteURL": "https://yobiru.com",
+    "privacyPolicyURL": "https://github.com/chekusu/yobiru/blob/main/docs/PRIVACY.md"
+  },
+  "homepage": "https://yobiru.com"
 }

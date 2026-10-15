@@ -26,7 +26,7 @@ Yobiru gives those agents a small, shared way to communicate:
 - **Track requests:** get a receipt, progress and a final outcome, with a queryable deadline and timeout state. Notifications need no reply.
 - **Share useful context:** send text, JSON, reports, logs, and other files.
 - **Wake on your terms:** the receiver decides which senders may wake which agent, with quiet hours and rate limits.
-- **Keep your own tools:** one plugin package includes six skills and a Python CLI, with Codex and Cursor manifests and a Grok Bot installation route.
+- **Keep your own tools:** one plugin package includes seven skills and a Python CLI, with Codex and Cursor manifests and dedicated Grok Bot setup and recovery guidance.
 - **Keep storage on your machines:** Yobiru operates no messaging or attachment storage service. Files are fetched from the sender over Tailscale.
 
 This is a communication layer, not a new chat app or an autonomous task manager. Agents can coordinate toward a shared goal through messages and replies, but Yobiru does not provide a shared group-room UI, a scheduler, or proof that another agent completed its work.
@@ -41,7 +41,7 @@ Imagine asking: **“What are people discussing, what matters to my project, and
 | DOTS | Relates the findings to your context and organizes a brief. | `brief.md` and questions for the coding agent. |
 | Codex | Checks the repository, investigates feasibility, and prepares a change or a technical answer. | Findings, files, and a reply to the requesting agent. |
 
-This is an illustrative workflow. Yobiru does not grant X access, change a provider's pricing, or supply missing capabilities. **DOTS is a conditional example:** it needs an execution environment that can run this CLI and reach the tailnet; this repository does not include a verified DOTS connector. Grok Bot's complete runtime integration also remains to be tested on an actual account.
+This is an illustrative workflow. Yobiru does not grant X access, change a provider's pricing, or supply missing capabilities. **DOTS is a conditional example:** it needs an execution environment that can run this CLI and reach the tailnet; this repository does not include a verified DOTS connector. A manually deployed Grok Bot runtime completed a real tracked request with 0.5.0; native marketplace installation and rebuild recovery require separate verification.
 
 ## How it works
 
@@ -85,9 +85,13 @@ codex plugin marketplace add chekusu/yobiru
 codex plugin add yobiru@yobiru
 ```
 
-Start a new conversation, then say: **“Set up Yobiru on this machine.”** Installing the plugin runs nothing (there is no install hook); the `yobiru-setup` skill guides the rest. The six skills are `yobiru-setup`, `yobiru-sessions`, `yobiru-send`, `yobiru-inbox`, `yobiru-wake`, and `yobiru-upgrade`.
+Start a new conversation, then say: **“Set up Yobiru on this machine.”** Installing the plugin runs nothing (there is no install hook); the `yobiru-setup` skill guides the rest. The seven skills are `yobiru-setup`, `yobiru-grok-bot`, `yobiru-sessions`, `yobiru-send`, `yobiru-inbox`, `yobiru-wake`, and `yobiru-upgrade`.
 
 This installs through the repository marketplace. It does not imply a listing in the public Codex plugin directory.
+
+### ChatGPT desktop
+
+The same package is prepared for OpenAI's [desktop-only plugin route](https://developers.openai.com/plugins/deploy/desktop-only), since its skills execute local Python and Tailscale commands. ChatGPT and Codex use the shared [OpenAI submission portal](https://platform.openai.com/plugins); there is no second Yobiru messaging implementation. Public review and installation availability depend on the host and account. The package does not add a hosted connector for ChatGPT web or mobile. See the [submission record](docs/MARKETPLACE_SUBMISSION.md).
 
 ### Cursor and Grok Bot
 
@@ -101,9 +105,9 @@ agent --plugin-dir "$PWD/plugins/yobiru"
 
 You can also place `plugins/yobiru` in `~/.cursor/plugins/local/yobiru` and reload Cursor. For a team marketplace, use **Dashboard → Plugins & MCPs → Add Marketplace → Import from Repo**, enter `https://github.com/chekusu/yobiru`, then configure access. See [Cursor plugins](https://cursor.com/docs/plugins).
 
-In Grok Bot, use **Plugins** to add Yobiru once a marketplace available to your account exposes it; a Cursor team administrator controls marketplace access. See [Grok Bot plugins](https://cursor.com/help/grok-bot/connect-plugins). **The public Cursor Marketplace listing has not been submitted**, so a public marketplace search may not find it.
+In Grok Bot, use **Connect apps** to add Yobiru once a marketplace available to your account exposes it; a Cursor team administrator can control marketplace access. See [Grok Bot plugins](https://cursor.com/help/grok-bot/connect-plugins). The [official submission page](https://x.ai/bot/marketplace/submit-a-plugin) covers Grok Bot and Cursor. A submitted package still needs review; check the [submission record](docs/MARKETPLACE_SUBMISSION.md) for status.
 
-Prepare the computer used by the Grok Bot conversation, including Tailscale and the receiver. Keep its data in a persistent directory such as `/workspace/.tailmsg`, using `--home /workspace/.tailmsg` before each command. If the host loads only skill text and does not expose bundled scripts, use a checkout or unpacked plugin archive in `/workspace`. Script availability, receiver persistence, and an actual Grok Bot wake cycle still need account-level verification; see [platform notes](docs/PLATFORMS.md).
+Ask Grok Bot: **“Use yobiru-grok-bot to connect this conversation's computer to my other agents.”** Keep a new installation's data in a persistent directory such as `/workspace/.tailmsg`; preserve any existing data home. The skill handles computer selection, verified archive fallback when scripts are missing, stable device naming and recovery checks. A running receiver, a completed request and a native plugin install are separate evidence. Follow the [Grok Bot guide](docs/GROK_BOT.md) and [platform notes](docs/PLATFORMS.md).
 
 ### CLI without a plugin host
 
@@ -286,6 +290,8 @@ With the Codex bridge installed, its fixed dispatcher UUID is reported automatic
 
 ## Privacy and trust
 
+See the [privacy notice](docs/PRIVACY.md) for storage, network contacts and deletion details.
+
 - **Your machines hold the data.** Inbox/outbox records and staged attachments live in the data home: `--home DIR`, then `$TAILMSG_HOME`, then `~/.tailmsg`. Yobiru runs no central storage service. The chosen agent providers may still process content supplied to their agents.
 - **Tailscale is the network boundary.** The receiver checks Tailscale identity and its own access policy (`tailnet` by default for new installations, optional `allowlist`, with deny rules taking precedence). Tailscale ACLs/grants still apply. Encryption in transit comes from Tailscale; Yobiru does not add encryption at rest. Protect the host and its filesystem.
 - **Agent names are routing, not isolation.** `from_agent` is sender-selected. Multiple agents sharing a machine or data home are not separate security principals; use separate machines or appropriate host isolation when required.
@@ -304,7 +310,7 @@ codex plugin marketplace upgrade yobiru
 codex plugin add yobiru@yobiru
 ```
 
-Start a new conversation after an update. In Cursor, update from **Customize** or replace the local plugin copy; in Grok Bot, manage it through **Plugins**.
+Start a new conversation after an update. In Cursor, update from **Customize** or replace the local plugin copy; in Grok Bot, manage it through **Connect apps**.
 
 A plugin update does **not** update the durable receiver: run `install-runtime --upgrade` (then `--apply`) and restart the receiver service; re-run `codex-bridge install` with the same session UUID if the bridge is installed (names, replies setting and custom dispatcher instructions are kept). Then coordinate your other machines:
 
@@ -352,11 +358,11 @@ python3 tools/build_plugin.py release
 | Area | Current verification boundary |
 |---|---|
 | Packaging and CLI | Automated checks cover extracted archives, paths with spaces, configuration preservation, and message/file/reply/wake flows with isolated fixtures. |
-| Tailscale transport | With 0.1.0 (not rerun for 0.2.x; the core is unchanged), the upstream `selftest.sh` passed 59 checks using temporary receivers on one Linux machine's real Tailscale address. This is not a two-machine test. |
-| Codex | With 0.1.0 (not repeated for 0.2.x or 0.3.0): Linux CLI installation, enabled plugin state, four-skill discovery, and command execution from the plugin cache were verified. In 0.2.x the Linux and macOS bridges are covered only by offline and extracted-package tests with fake CLIs, fake `systemctl` and temporary sockets; no live app-server run is claimed. |
-| Cursor / Grok Bot / DOTS | Cursor/Grok routes follow host documentation; real host acceptance and cross-platform end-to-end collaboration remain unverified. No DOTS connector is shipped. |
+| Tailscale transport | Historical 0.4.0 single-host self-tests passed 59 checks on a real Tailscale interface. The separate 0.5.0 live acceptance includes a real cross-machine Grok Bot request; see the dated verification notes. |
+| Codex | Historical repository install and skill discovery passed. On 2026-10-13, a live 0.5.0 Linux bridge in its existing session completed an automatic tracked reply. This does not establish every desktop host or the public-directory install route. |
+| Cursor / Grok Bot / DOTS | A manually deployed Grok Bot 0.5.0 runtime completed a real cross-machine tracked request and authenticated status refresh. Native Grok/Cursor marketplace install and rebuild recovery remain separate acceptance steps. No DOTS connector is shipped. |
 | 0.3.0 onboarding, discovery, updates | Offline tests: onboarding per platform (missing, logged out, daemon, permission, no TUN), authenticated `/info` and secret-free projection, native/confirmed/alias names with UUID, legacy 404 / 403 / unreachable / malformed / slow peers, release parsing and channels, notice dedup, retries and uncertain handling, bridge upgrades keeping names. No real Tailscale, GitHub or peer was contacted. |
-| Public marketplace listings | Not submitted or approved. Repository installation is separate. |
+| Public marketplace listings | See the [submission record](docs/MARKETPLACE_SUBMISSION.md). Repository installation, submission, review and publication are separate. |
 
 `sh selftest.sh` requires Tailscale and temporary free ports `7866–7883`; it does not use the production port `7766` or the default data home. See [platform notes and sources](docs/PLATFORMS.md) for remaining acceptance steps.
 

@@ -5,8 +5,9 @@
 Agent-to-agent messages, file handoff and receiver-controlled wake-ups between machines on your own
 Tailscale network, using the tailmsg protocol v1. One package for Codex, Cursor and Grok Bot.
 
-Version 0.5.0. Source: <https://github.com/chekusu/yobiru>. Not submitted to or reviewed by any
-marketplace.
+Version 0.5.1. Source: <https://github.com/chekusu/yobiru>. Public submission and review status:
+[marketplace record](https://github.com/chekusu/yobiru/blob/main/docs/MARKETPLACE_SUBMISSION.md).
+Repository installation does not establish a public listing.
 
 ## Contents
 
@@ -16,6 +17,7 @@ marketplace.
 | `.codex-plugin/plugin.json` | Codex manifest (presentation and skills). |
 | `.cursor-plugin/plugin.json` | Cursor manifest. |
 | `skills/yobiru-setup` | Guided onboarding (also without Tailscale yet), setup and repair of this machine. |
+| `skills/yobiru-grok-bot` | Grok Bot conversation-computer selection, plugin verification and rebuild recovery. |
 | `skills/yobiru-sessions` | Which machines and agents are online, and which session (name + exact id) handles each. |
 | `skills/yobiru-upgrade` | Update checks, safe upgrades and versioned notices to your other installations. |
 | `skills/yobiru-send` | Send messages, data and files; track requests with receipts, deadlines and final outcomes. |
@@ -27,6 +29,12 @@ marketplace.
 | `scripts/SOURCES.json` | Where the bundled files come from, with SHA-256. |
 
 No hooks, MCP servers or permission settings are included. Installing the plugin runs nothing.
+
+The OpenAI package declares desktop execution because the skills run local programs. It uses the
+same implementation for Codex and compatible ChatGPT desktop installations; no hosted web or mobile
+connector is provided. Grok Bot and Cursor use the shared skills and Cursor-compatible metadata.
+See the [Grok Bot guide](https://github.com/chekusu/yobiru/blob/main/docs/GROK_BOT.md) and
+[privacy notice](https://github.com/chekusu/yobiru/blob/main/docs/PRIVACY.md).
 
 ## Requirements
 
