@@ -28,6 +28,14 @@ native skills. No supported install/import route was established through that co
 This reconfirms manual runtime execution, while native in-app plugin testing remains **unverified**.
 Do not use this observation to satisfy a declaration that native plugin installation was tested.
 
+The same Grok Bot subsequently fetched the 0.5.1 candidate archive, verified its download hash
+and bundled-source hash, extracted it into an isolated temporary directory, and successfully ran
+`version`, `paths` and `doctor`. It returned the authenticated tracked outcome using the candidate's
+`request respond` command against its existing data home. Its receiver remained on 0.5.0.
+Native loading was reported **blocked**: no supported development plugin importer was exposed,
+and writing the host's global user-skill library was outside that wake entry's permissions.
+This is a passed manual-package smoke test, not native marketplace acceptance.
+
 ## Historical live acceptance after the 0.5.0 release
 
 On 2026-10-13, after the isolated release suites completed:
