@@ -5,6 +5,7 @@ selftest.sh and the documented manual acceptance.
 """
 import importlib.util
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -32,6 +33,15 @@ class EnvelopeIdTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             bridge.stable_request_id("nope")
 
+    def test_live_keys_do_not_collapse_distinct_spaces_or_authenticated_sources(self):
+        mid = "9f2c4e1ab07d33c5"
+        first = bridge.stable_request_id(mid, 'space_one', 'alpha.example.ts.net', 'grok')
+        self.assertEqual(first, bridge.stable_request_id(mid, 'space_one', 'alpha.example.ts.net', 'grok'))
+        for space, peer, agent in [('space_two', 'alpha.example.ts.net', 'grok'),
+                                   ('space_one', 'bravo.example.ts.net', 'grok'),
+                                   ('space_one', 'alpha.example.ts.net', 'other')]:
+            self.assertNotEqual(first, bridge.stable_request_id(mid, space, peer, agent))
+
 
 class AgentNameTests(unittest.TestCase):
     def test_unicode_names_normalize_but_case_matters(self):
@@ -40,7 +50,7 @@ class AgentNameTests(unittest.TestCase):
         self.assertNotEqual(bridge.normalize_agent("Codex"), bridge.normalize_agent("codex"))
 
     def test_illegal_names_rejected_before_any_identity_is_minted(self):
-        for bad in ("", " a", "a ", "a/b", "a\nb", "x" * 65, None):
+        for bad in ("", " a", "a ", "a/b", "a\nb", "a\u0085b", "a\u2028b", "a\u2029b", "x" * 65, None):
             with self.assertRaises(ValueError):
                 bridge.normalize_agent(bad)
 
@@ -87,7 +97,18 @@ class ReceiptMapTests(unittest.TestCase):
         self.assertIsNone(bridge.map_receipt_state("bogus"))
 
 
+@unittest.skipUnless(os.name == 'posix', 'The optional bridge currently requires POSIX private-file checks.')
 class TokenFileTests(unittest.TestCase):
+    def test_symlink_token_files_are_refused(self):
+        with tempfile.TemporaryDirectory() as home:
+            target = Path(home) / 'token'
+            target.write_text('synthetic-secret')
+            target.chmod(0o600)
+            link = Path(home) / 'linked-token'
+            link.symlink_to(target)
+            with self.assertRaises((OSError, ValueError)):
+                bridge.read_token(link)
+
     def test_wide_token_files_refused(self):
         with tempfile.TemporaryDirectory() as home:
             loose = Path(home) / "token"
